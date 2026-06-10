@@ -1,0 +1,369 @@
+Copyright Connected, dit is onderdeel van Connected Hexagon
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌴 Shipwrecked Loot Market 🏴‍☠️</title>
+    <style>
+        :root {
+            --bg-color: #1a262b;
+            --panel-color: #2c3e46;
+            --accent-color: #de7a38;
+            --text-color: #f4ebd0;
+            --border-color: #4a5e68;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        header {
+            grid-column: 1 / span 2;
+            background: #23333a;
+            padding: 15px;
+            border: 3px solid var(--accent-color);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1, h2, h3 { margin: 0; color: var(--accent-color); text-shadow: 1px 1px #000; }
+        .main-content { display: flex; flex-direction: column; gap: 20px; }
+        .panel { background: var(--panel-color); border: 2px solid var(--border-color); border-radius: 6px; padding: 20px; }
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
+        
+        .slot-machine { background: #3a221d; border: 4px solid #b55229; text-align: center; }
+        .slots-display { background: #111; font-size: 3rem; padding: 10px; border-radius: 4px; margin: 15px 0; display: flex; justify-content: center; }
+
+        input[type="text"] { background: #111; border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 4px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+        button { background: var(--accent-color); color: #fff; border: none; padding: 10px 15px; font-weight: bold; cursor: pointer; border-radius: 4px; box-shadow: 0 3px #964619; }
+        button:hover { background: #f08b4a; }
+        button:active { transform: translateY(3px); box-shadow: none; }
+        button:disabled { background: #555; box-shadow: none; cursor: not-allowed; }
+
+        .shop-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .shop-table th, .shop-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .shop-table tr:hover { background: rgba(0,0,0,0.1); }
+        
+        .stats-badge { font-size: 1.2rem; background: rgba(0,0,0,0.4); padding: 5px 10px; border-radius: 4px; }
+        .unlocked { color: #51cf66; font-weight: bold; }
+
+         .volcano-shrine {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #2d1610;
+            border: 3px dashed #ff4500;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(255, 69, 0, 0.3);
+            z-index: 9999;
+            width: 280px;
+            text-align: center;
+        }
+        .volcano-btn {
+            background: #ff4500;
+            color: #fff;
+            border: none;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            box-shadow: 0 3px #b33000;
+            width: 100%;
+            margin-top: 8px;
+        }
+        .volcano-btn:hover { background: #ff6324; }
+        .volcano-btn:disabled { background: #44312c; box-shadow: none; color: #777; }
+        .volcano-status { font-size: 0.8rem; font-style: italic; color: #ffaa66; margin-top: 6px; min-height: 2.4em; display: flex; align-items: center; justify-content: center; }
+        .active-blessing { background: #a63a17 !important; border-color: #ffaa00 !important; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 5px #ffaa00; }
+            50% { box-shadow: 0 0 20px #ffaa00; }
+            100% { box-shadow: 0 0 5px #ffaa00; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>🌴 Shipwrecked Cargo Market 🦀</h1>
+            <small>Status: <span id="status-text">🏝️ Voer een gekochte seed in...</span></small>
+        </div>
+        <div class="stats-badge">🪙 Dubloenen: <strong id="coin-balance">0</strong></div>
+    </header>
+
+    <div class="main-content">
+        <div class="panel">
+            <h2>🔑 Wissel je Gekochte Seed in</h2>
+            <p style="font-size: 0.85rem; color: #aaa;">Voer je 15-tekenige code in om de dubloenen op te graven.</p>
+            <input type="text" id="seed-input" maxlength="15" placeholder="Voer code in..." oninput="checkSeedLength()">
+            <button id="load-btn" onclick="redeemSeed()" disabled>💰 Graaf Dubloenen Op</button>
+            <p id="seed-msg" style="font-size: 0.9rem; font-weight: bold; margin-top: 10px;"></p>
+        </div>
+
+        <div class="panel">
+            <h2>🔬 Wetenschapsmachine: Directory Bestanden Ontgrendelen</h2>
+            <p>Geef je dubloenen uit om de vergrendelde kratten (bestanden) te openen.</p>
+            
+            <table class="shop-table">
+                <thead>
+                    <tr>
+                        <th>Bestand 📦</th>
+                        <th>Kosten 🪙</th>
+                        <th>Status 🔒</th>
+                        <th>Actie 🛠️</th>
+                    </tr>
+                </thead>
+                <tbody id="shop-items"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="panel slot-machine">
+            <h2>🎰 Gokkende Krab Slots</h2>
+            <p style="font-size: 0.85rem;">Waag een gokje! Kosten: 🪙 5</p>
+            <div class="slots-display" id="slots-reel">🦈🥥🦀</div>
+            <button id="spin-btn" onclick="spinSlots()" disabled>🕹️ Trek Hendel</button>
+            <p id="slot-result" style="margin-top: 10px; font-weight: bold; min-height: 1.2em;"></p>
+        </div>
+    </div>
+
+    <div class="volcano-shrine" id="volcano-panel">
+        <h3 style="color: #ff4500; font-size: 1.1rem; text-shadow: 1px 1px #000;">🌋 Het Vulkaan Offerblok</h3>
+        <p style="font-size: 0.75rem; margin: 4px 0; color: #ddd;">Offer 100 munten aan de vurige goden!</p>
+        <button class="volcano-btn" id="volcano-action-btn" onclick="sacrificeToVolcano()">🔥 Gooi 🪙 100 in Lava</button>
+        <div class="volcano-status" id="volcano-msg">De vulkaan rommelt zachtjes...</div>
+    </div>
+
+    <script>
+    (function() {
+        
+        // Externe bestanden configuratie
+        const directoryFiles = [
+            { id: "file1", name: "readme.txt", price: 0, file: "buit_readme.js", variable: "buit_readme_data" },
+            { id: "file2", name: "Presentatie Frans: ma maison.pptx", price: 25, file: "buit_maison.js", variable: "buit_maison_data" },
+            { id: "file3", name: "Wet van Ohm.xlsx", price: 10, file: "buit_ohm.js", variable: "buit_ohm_data" },
+            { id: "file4", name: "sketchup tekeningen.zip", price: 50, file: "buit_sketchup.js", variable: "buit_sketchup_data" }
+        ];
+
+        let wallet = { coins: 0, unlockedFiles: [], usedSeeds: [], hasBlessing: false };
+
+        if(localStorage.getItem('sw_market_wallet')) {
+            try {
+                const decoded = atob(localStorage.getItem('sw_market_wallet'));
+                wallet = JSON.parse(decoded);
+                if(wallet.hasBlessing === undefined) wallet.hasBlessing = false;
+            } catch(e) {
+                wallet = { coins: 0, unlockedFiles: [], usedSeeds: [], hasBlessing: false };
+            }
+        }
+
+        function saveWallet() {
+            const encoded = btoa(JSON.stringify(wallet));
+            localStorage.setItem('sw_market_wallet', encoded);
+            updateUI();
+        }
+
+        window.checkSeedLength = function() {
+            const input = document.getElementById('seed-input').value;
+            document.getElementById('load-btn').disabled = (input.length !== 15);
+        }
+
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);                    
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function triggerDirectDownload(base64Data, fileName) {
+            const link = document.createElement('a'); 
+            link.href = base64Data; 
+            link.download = "UNLOCKED_" + fileName; 
+            document.body.appendChild(link); 
+            link.click(); 
+            document.body.removeChild(link);
+        }
+
+        function loadScriptAndExecute(scriptUrl, callback) {
+            const script = document.createElement('script');
+            script.src = scriptUrl;
+            script.onload = callback; 
+            script.onerror = function() { alert("💀 Externe datafout."); };
+            document.head.appendChild(script);
+        }
+
+        window.redeemSeed = async function() {
+            const input = document.getElementById('seed-input').value.trim().toUpperCase();
+            const msg = document.getElementById('seed-msg');
+
+            if (wallet.usedSeeds.includes(input)) {
+                msg.style.color = "#ff6b6b"; msg.innerText = "❌ Deze code is al leeg! 🕳️"; return;
+            }
+            if (input.length !== 15) {
+                msg.style.color = "#ff6b6b"; msg.innerText = "💀 Code moet 15 tekens zijn... 🦀"; return;
+            }
+
+            const basis = input.substring(0, 12);       
+            const clientCheck = input.substring(12, 15); 
+            const secretSalt = "SHIPWRECKED2026"; 
+
+            const fullHash = await sha256(basis + secretSalt);
+            const serverCheck = fullHash.substring(0, 3).toUpperCase();
+
+            if (clientCheck === serverCheck) {
+                const waardeTekst = basis.substring(9, 12);
+                let reward = parseInt(waardeTekst, 10);
+
+                if (isNaN(reward) || reward <= 0 || reward > 1000) {
+                    msg.style.color = "#ff6b6b"; msg.innerText = "💀 Code corrupt! 🦀"; return;
+                }
+
+                if (wallet.hasBlessing) {
+                    reward = reward * 2; // Dubbele winst!
+                    wallet.hasBlessing = false; // Verbruik de zegening direct
+                    msg.style.color = "#ffaa00";
+                    msg.innerText = `🌋 DE VULKAAN ZEGENT JE! Code verdubbeld! Je graaft +🪙 ${reward} Dubloenen op! 🏴‍☠️`;
+                } else {
+                    msg.style.color = "#51cf66";
+                    msg.innerText = `🎉 Code geaccepteerd! Je graaft +🪙 ${reward} Dubloenen op! 🏴‍☠️`;
+                }
+
+                wallet.coins += reward;
+                wallet.usedSeeds.push(input); 
+                saveWallet();
+            } else {
+                msg.style.color = "#ff6b6b"; msg.innerText = "💀 De code klopt niet... 🦀";
+            }
+            document.getElementById('seed-input').value = "";
+            document.getElementById('load-btn').disabled = true;
+        }
+
+        window.sacrificeToVolcano = function() {
+            if (wallet.coins < 100) return;
+            
+            wallet.coins -= 100;
+            document.getElementById('volcano-action-btn').disabled = true;
+            const msg = document.getElementById('volcano-msg');
+            msg.innerText = "🔥 Je gooit de munten erin... De lava borrelt heftig! 🔥";
+
+            setTimeout(() => {
+                const rand = Math.random(); // Genereer getal tussen 0.0 en 1.0
+
+                if (rand < 0.50) {
+                    msg.innerText = "🕳️ Slik... De vulkaan slikt je munten door en eist stilte. Niks gebeurd!";
+                } 
+                else if (rand < 0.85) {
+                    wallet.hasBlessing = true;
+                    msg.innerText = "✨ ZEGENING! De vuurgoden glimlachen. Je VOLGENDE ingevoerde seed geeft DUBBELE munten! ✨";
+                } 
+                else {
+                    const subRand = Math.random();
+                    if(subRand > 0.40) {
+                        wallet.coins += 250;
+                        msg.innerText = "🌋 UITBARSTING! De vulkaan spuugt oud goud omhoog! Je wint +🪙 250 DUBLOENEN! 💰";
+                    } else {
+                        const schade = Math.min(wallet.coins, 25);
+                        wallet.coins -= schade;
+                        msg.innerText = `🌋 UITBARSTING! Gloeiende lava smelt nóg eens 🪙 ${schade} extra munten weg! Wegwezen!`;
+                    }
+                }
+                saveWallet();
+            }, 1200); 
+        }
+
+        window.buyFile = function(fileId, fileName, price) {
+            const fileConfig = directoryFiles.find(f => f.id === fileId);
+            if (!fileConfig) return;
+
+            function executeDownload() {
+                const base64Data = window[fileConfig.variable];
+                if (base64Data) triggerDirectDownload(base64Data, fileName);
+                else alert("💀 Fout bij uitpakken van data.");
+            }
+
+            if (wallet.unlockedFiles.includes(fileId)) {
+                if (window[fileConfig.variable]) executeDownload();
+                else loadScriptAndExecute(fileConfig.file, executeDownload);
+                return;
+            }
+            
+            if (wallet.coins >= price) {
+                wallet.coins -= price; wallet.unlockedFiles.push(fileId); saveWallet();
+                alert(`🔓 Succes! Je hebt '${fileName}' vrijgekocht!`); 
+                loadScriptAndExecute(fileConfig.file, executeDownload);
+            } else { alert("🦈 Te weinig dubloenen!"); }
+        }
+
+        function updateUI() {
+            document.getElementById('coin-balance').innerText = wallet.coins;
+            document.getElementById('spin-btn').disabled = (wallet.coins < 5);
+            document.getElementById('volcano-action-btn').disabled = (wallet.coins < 100);
+            
+            if(wallet.usedSeeds.length > 0) document.getElementById('status-text').innerText = "Seeds ingelezen";
+            
+            const vPanel = document.getElementById('volcano-panel');
+            const vBtn = document.getElementById('volcano-action-btn');
+            if (wallet.hasBlessing) {
+                vPanel.classList.add('active-blessing');
+                document.getElementById('volcano-msg').innerText = "✨ MULTIPLIER (2x) ACTIEF op je volgende code! ✨";
+                vBtn.disabled = true; // Je mag pas weer offeren als je huidige bonus op is
+                vBtn.innerText = "🔒 Zegening Actief";
+            } else {
+                vPanel.classList.remove('active-blessing');
+                vBtn.innerText = "🔥 Gooi 🪙 100 in Lava";
+            }
+
+            const tableBody = document.getElementById('shop-items'); tableBody.innerHTML = '';
+            directoryFiles.forEach(file => {
+                const isUnlocked = wallet.unlockedFiles.includes(file.id);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${isUnlocked ? '🔓' : '🔒'} ${file.name}</td>
+                    <td>🪙 ${file.price}</td>
+                    <td class="${isUnlocked ? 'unlocked' : ''}">${isUnlocked ? 'VRIJGEKOCHT' : 'VERGRENDELD'}</td>
+                    <td><button onclick="buyFile('${file.id}', '${file.name}', ${file.price})">${isUnlocked ? '💾 Openen' : '🪙 Kopen'}</button></td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        const slotEmojis = ['🌴', '🥥', '🦀', '🦈', '🌋'];
+        window.spinSlots = function() {
+            if (wallet.coins < 5) return; wallet.coins -= 5; saveWallet();
+            let ticks = 0;
+            const interval = setInterval(() => {
+                document.getElementById('slots-reel').innerText = slotEmojis[Math.floor(Math.random() * slotEmojis.length)] + slotEmojis[Math.floor(Math.random() * slotEmojis.length)] + slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
+                ticks++;
+                if (ticks > 8) { clearInterval(interval); finalizeSpin(); }
+            }, 100);
+        }
+
+        function finalizeSpin() {
+            const r1 = slotEmojis[Math.floor(Math.random() * slotEmojis.length)]; const r2 = slotEmojis[Math.floor(Math.random() * slotEmojis.length)]; const r3 = slotEmojis[Math.floor(Math.random() * slotEmojis.length)];
+            document.getElementById('slots-reel').innerText = r1 + r2 + r3;
+            const resText = document.getElementById('slot-result');
+            if(r1 === r2 && r2 === r3) { wallet.coins += 40; resText.style.color = "#ffd700"; resText.innerText = "🎉 DRIE OP EEN RIJ! +🪙 40!"; }
+            else if (r1 === r2 || r2 === r3 || r1 === r3) { wallet.coins += 7; resText.style.color = "#51cf66"; resText.innerText = "🍃 Netjes! Twee gelijk: +🪙 7"; }
+            else { resText.style.color = "#ff6b6b"; resText.innerText = "💀 Helaas, niks gewonnen."; }
+            saveWallet();
+        }
+
+        updateUI();
+    })();
+    </script>
+</body>
+</html>
